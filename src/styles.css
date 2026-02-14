@@ -242,6 +242,12 @@ button {
   gap: 16px;
 }
 
+.link-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .open-link {
   text-decoration: none;
   color: var(--accent);

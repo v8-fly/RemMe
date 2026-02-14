@@ -77,6 +77,7 @@ export default function App() {
   const [editForm, setEditForm] = useState(emptyForm);
   const [fetchingTitle, setFetchingTitle] = useState(false);
   const [theme, setTheme] = useTheme();
+  const [copiedId, setCopiedId] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -211,6 +212,27 @@ export default function App() {
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  const copyLink = async (link) => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(link.url);
+      } else {
+        const temp = document.createElement('textarea');
+        temp.value = link.url;
+        temp.style.position = 'fixed';
+        temp.style.left = '-9999px';
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+      }
+      setCopiedId(link.id);
+      window.setTimeout(() => setCopiedId((current) => (current === link.id ? null : current)), 1500);
+    } catch {
+      setError('Could not copy that link.');
+    }
   };
 
   return (
@@ -379,9 +401,14 @@ export default function App() {
                       <h3>{link.title}</h3>
                       <p className="domain">{formatDomain(link.url)}</p>
                     </div>
-                    <a className="open-link" href={link.url} target="_blank" rel="noreferrer">
-                      Open
-                    </a>
+                    <div className="link-actions">
+                      <button className="ghost" type="button" onClick={() => copyLink(link)}>
+                        {copiedId === link.id ? 'Copied' : 'Copy'}
+                      </button>
+                      <a className="open-link" href={link.url} target="_blank" rel="noreferrer">
+                        Open
+                      </a>
+                    </div>
                   </div>
                   {link.note ? <p className="note">{link.note}</p> : null}
                   {link.tags?.length ? (
