@@ -94,6 +94,30 @@ body {
   box-shadow: 0 8px 18px rgba(24, 32, 54, 0.12);
 }
 
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.upload {
+  position: relative;
+  overflow: hidden;
+}
+
+.upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.import-message {
+  margin: 0;
+  color: var(--muted);
+}
+
 .panel {
   display: flex;
   flex-direction: column;

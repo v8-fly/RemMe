@@ -65,4 +65,10 @@ export async function deleteLink(id) {
   return withStore('readwrite', (store) => store.delete(id));
 }
 
+export async function putLinks(links) {
+  return withStore('readwrite', (store) => {
+    links.forEach((link) => store.put(link));
+  });
+}
+
 export { DB_NAME, STORE_NAME };

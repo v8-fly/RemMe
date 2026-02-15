@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { addLink, deleteLink, getAllLinks, updateLink } from './db';
+import { addLink, deleteLink, getAllLinks, putLinks, updateLink } from './db';
 
 const emptyForm = {
   url: '',
@@ -78,6 +78,7 @@ export default function App() {
   const [fetchingTitle, setFetchingTitle] = useState(false);
   const [theme, setTheme] = useTheme();
   const [copiedId, setCopiedId] = useState(null);
+  const [importMessage, setImportMessage] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -214,6 +215,71 @@ export default function App() {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
+  const exportLinks = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      version: 1,
+      links
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `remme-links-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const normalizeImportedLinks = (data) => {
+    const list = Array.isArray(data) ? data : data?.links;
+    if (!Array.isArray(list)) return [];
+    return list
+      .filter((item) => item && typeof item.url === 'string')
+      .map((item) => {
+        const now = Date.now();
+        const normalizedUrl = normalizeUrl(item.url);
+        return {
+          id: item.id || crypto.randomUUID(),
+          url: normalizedUrl,
+          title: (item.title || normalizedUrl).toString().trim(),
+          note: (item.note || '').toString().trim(),
+          tags: Array.isArray(item.tags) ? item.tags.map((tag) => tag.toString().toLowerCase().trim()).filter(Boolean) : [],
+          createdAt: Number.isFinite(item.createdAt) ? item.createdAt : now,
+          updatedAt: Number.isFinite(item.updatedAt) ? item.updatedAt : now
+        };
+      });
+  };
+
+  const importLinks = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setImportMessage('');
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const incoming = normalizeImportedLinks(parsed);
+      if (!incoming.length) {
+        setImportMessage('No valid links found in that file.');
+        return;
+      }
+      const existingByUrl = new Set(links.map((link) => link.url));
+      const merged = incoming.filter((link) => !existingByUrl.has(link.url));
+      if (!merged.length) {
+        setImportMessage('All links already exist.');
+        return;
+      }
+      await putLinks(merged);
+      const nextLinks = [...merged, ...links].sort((a, b) => b.createdAt - a.createdAt);
+      setLinks(nextLinks);
+      setImportMessage(`Imported ${merged.length} link${merged.length === 1 ? '' : 's'}.`);
+    } catch {
+      setImportMessage('Could not import that file.');
+    }
+  };
+
   const copyLink = async (link) => {
     try {
       if (navigator.clipboard?.writeText) {
@@ -243,10 +309,20 @@ export default function App() {
           <h1>RemMe</h1>
           <p className="subhead">A pocket-sized inbox for every link you want to remember.</p>
         </div>
-        <button className="theme-toggle" onClick={toggleTheme} type="button">
-          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-        </button>
+        <div className="hero-actions">
+          <button className="ghost" type="button" onClick={exportLinks}>
+            Export
+          </button>
+          <label className="ghost upload">
+            Import
+            <input type="file" accept="application/json" onChange={importLinks} />
+          </label>
+          <button className="theme-toggle" onClick={toggleTheme} type="button">
+            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          </button>
+        </div>
       </header>
+      {importMessage ? <p className="import-message">{importMessage}</p> : null}
 
       <section className="panel">
         <form className="card form" onSubmit={handleAdd}>
